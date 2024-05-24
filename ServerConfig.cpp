@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 19:12:28 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/20 03:59:00 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/05/24 12:56:28 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,21 +50,21 @@ ServerConfig &ServerConfig::operator=(const ServerConfig & rhs)
 
 void ServerConfig::initErrorPages(void)
 {
-	_errorPages[301] = "";
-	_errorPages[302] = "";
-	_errorPages[400] = "";
-	_errorPages[401] = "";
-	_errorPages[402] = "";
-	_errorPages[403] = "";
-	_errorPages[404] = "";
-	_errorPages[405] = "";
-	_errorPages[406] = "";
-	_errorPages[500] = "";
-	_errorPages[501] = "";
-	_errorPages[502] = "";
-	_errorPages[503] = "";
-	_errorPages[504] = "";
-	_errorPages[505] = "";
+	// _errorPages[301] = "";
+	// _errorPages[302] = "";
+	// _errorPages[400] = "";
+	// _errorPages[401] = "";
+	// _errorPages[402] = "";
+	// _errorPages[403] = "";
+	// _errorPages[404] = "";
+	// _errorPages[405] = "";
+	// _errorPages[406] = "";
+	// _errorPages[500] = "";
+	// _errorPages[501] = "";
+	// _errorPages[502] = "";
+	// _errorPages[503] = "";
+	// _errorPages[504] = "";
+	// _errorPages[505] = "";
 }
 
 void ServerConfig::checkSemiColon(std::string &input)
@@ -180,6 +180,12 @@ void ServerConfig::setErrorPages(std::vector<std::string> &errorPages)
 		return ;
 	// if (errorPages.size() % 2 != 0)
 	// 	throw ErrorException ("Error page initialization failed");
+	std::string errorPagePath = errorPages.back();
+	checkSemiColon(errorPagePath);
+	if (ConfigFile::getTypeFilePath((this->_root + errorPagePath)) != 1)
+			throw ErrorException ("Incorrect path for error page file: " + errorPagePath);
+	if (ConfigFile::filePathExistsandReadable(this->_root + "/", errorPagePath) != 1)
+			throw ErrorException ("Error page file :" + errorPagePath + " is not accessible");
 	for (size_t i = 0; i < errorPages.size() - 1; i++)
 	{
 		for (size_t j = 0; j < errorPages[i].size(); j++) {
@@ -191,18 +197,11 @@ void ServerConfig::setErrorPages(std::vector<std::string> &errorPages)
 		int codeError = std::stoi(errorPages[i].c_str(), NULL, 10);
 		if (statusCodeString(codeError)  == "Undefined" || codeError < 400)
 			throw ErrorException ("Incorrect error code: " + errorPages[i]);
-		i++;
-		std::string path = errorPages[i];
-		checkSemiColon(path);
-		if (ConfigFile::getTypeFilePath(path) != 1)
-			throw ErrorException ("Incorrect path for error page file: " + path);
-		if (ConfigFile::fileExistsandReadable(path) != 1)
-			throw ErrorException ("Error page file :" + path + " is not accessible");
 		std::map<int, std::string>::iterator it = this->_errorPages.find(codeError);
 		if (it != _errorPages.end())
-			this->_errorPages[codeError] = path;
+			this->_errorPages[codeError] = errorPagePath;
 		else
-			this->_errorPages.insert(std::make_pair(codeError, path));
+			this->_errorPages.insert(std::make_pair(codeError, errorPagePath));
 	}
 }
 
@@ -348,7 +347,7 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 				throw ErrorException("Root of location is duplicated.");
 			checkSemiColon(input[++i]);
 			if (ConfigFile::getTypeFilePath(input[i]) != 2)
-				throw ErrorException("Invalid root of location.")
+				throw ErrorException("Invalid root of location.");
 			newLocation.setRootLocation(input[i]);
 		}
 		else if ((input[i] == "allow_methods" || input[i] == "methods") && (i + 1) < input.size())
@@ -451,44 +450,61 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 			}
 			newLocation.setCgiInterpreter(path);
 		}
-		// else if (input[i] == "client_max_body_size" && (i + 1) < input.size())
-		// {
-		// 	if (flag_max_size)
-		// 		throw ErrorException("Maxbody_size of location is duplicated");
-		// 	checkSemiColon(input[++i]);
-		// 	newLocation.setMaxBodySize(input[i]);
-		// 	flag_max_size = true;
-		// }
+		else if (input[i] == "client_max_body_size" && (i + 1) < input.size())
+		{
+			if (flagMaxSize)
+				throw ErrorException("Maxbody_size of location is duplicated");
+			checkSemiColon(input[++i]);
+			newLocation.setMaxBodySizeLoc(input[i]);
+			flagMaxSize= true;
+		}
 		else if (i < input.size())
-			throw ErrorException("Parameter in a location is invalid."); // ? to check avec un cas particulier
+			throw ErrorException("Invalid parameter in a location bloc."); // ? to check avec un cas particulier
 	}
-	if (newLocation.getPath() != "/cgi-bin" && newLocation.getRootLocation().empty())
-		newLocation.setRootLocation(this->_root);
-	if (newLocation.getPath() != "/cgi-bin" && newLocation.getIndexLocation().empty())
+	if (newLocation.getPath() != "/cgi-bin" && newLocation.getRootLocation().empty()) // s'il n'y pas de root dans le block location on met le root du server
+		newLocation.setRootLocation(this->_root); // on recheck plus tard si root du server existe, s'il n'existe pas => error
+	if (newLocation.getIndexLocation().empty())
 		newLocation.setIndexLocation(this->_index);
-	// if (!flagMaxSize)
-	// 	newLocation.setMaxBodySize(this->_clientMaxBodySize);
+	if (this->_index.empty())
+		throw ErrorException("No default index file, or present after location block.");
+	if (!flagMaxSize)
+		newLocation.setMaxBodySizeLoc(std::to_string(this->_clientMaxBodySize));
+	std::vector<std::string> methodsDefault;
+	if (newLocation.getPath() == "/cgi-bin")
+		newLocation.setMethods(methodsDefault); // met les méthodes du CGI par défaut GET et POST
+	else
+		newLocation.setMethods(methodsDefault); // met la méthode GET par défaut pour les blocs location classique
 	valid = isValidLocation(newLocation);
 	if (valid == 1)
 		throw ErrorException("Failed CGI validation.");
 	else if (valid == 2)
 		throw ErrorException("Failed path in location validation.");
 	else if (valid == 3)
-		throw ErrorException("Failed redirection file in location validation.");
+		throw ErrorException("Failed redirection file in location block.");
 	else if (valid == 4)
-		throw ErrorException("Failed alias file in location validation.");
-	// Ajouter un paragraphe sur les méthodes
+		throw ErrorException("Failed alias file in location block.");
+	else if (valid == 5)
+		throw ErrorException("Failed route in location block.");
+	else if (valid == 6)
+		throw ErrorException("Failed index in location block.");
 	this->_locations.push_back(newLocation);
 }
 
 // fonction qui check les paramètre du block location
+// TO CHECK => isvalidlocation + tester toutes les permissions de fichier
 int ServerConfig::isValidLocation(Location &location) const
 {
 	if (location.getPath() == "/cgi-bin")
 	{
+		// std::cout << location.getRootLocation() << std::endl;
+		// std::cout << location.getIndexLocation() << std::endl;
+		// for (size_t i = 0; i < location.getCgiInterpreter().size(); i++)
+		// 	std::cout << location.getCgiInterpreter()[i] << std::endl;
+		// for (size_t i = 0; i < location.getCgiExtension().size(); i++)
+		// 	std::cout << location.getCgiExtension()[i] << std::endl;
 		if (location.getCgiInterpreter().empty() || location.getCgiExtension().empty() || location.getRootLocation().empty() || location.getIndexLocation().empty())
 			return (1);
-		if (ConfigFile::fileExistsandReadable(location.getIndexLocation()) < 0)
+		if (ConfigFile::fileExistsandReadable(this->_root + "/" + location.getIndexLocation()) < 0)
 		{
 			std::string path = location.getRootLocation() + location.getPath() + "/" + location.getIndexLocation();
 			if (ConfigFile::fileExistsandReadable(path) < 0)
@@ -508,7 +524,7 @@ int ServerConfig::isValidLocation(Location &location) const
 			std::string tmp = *it;
 			if (tmp != ".py" && tmp != ".sh")
 				return (1);
-			for (it_path = location.getCgiPath().begin(); it_path != location.getCgiPath().end(); ++it_path)
+			for (it_path = location.getCgiInterpreter().begin(); it_path != location.getCgiInterpreter().end(); ++it_path)
 			{
 				std::string tmp_path = *it_path;
 				if (tmp == ".py")
@@ -533,22 +549,39 @@ int ServerConfig::isValidLocation(Location &location) const
 		if (location.getRootLocation().empty()) {
 			location.setRootLocation(this->_root);
 		}
-		if (ConfigFile::fileExistsandReadable(location.getRootLocation() + location.getPath() + "/", location.getIndexLocation()))
-			return (5);
+		// if (ConfigFile::getTypeFilePath(location.getRootLocation() + location.getPath()) != 2) // on check que le root + path est bien un dir qui existe, est-ce vraiment nécessaire ?
+		// 	return (5);
+		if (ConfigFile::filePathExistsandReadable(location.getRootLocation() + "/", location.getIndexLocation()) == 0) // on check que l'index file existe
+			return (6);
 		if (!location.getReturn().empty())
 		{
-			if (ConfigFile::fileExistsandReadable(location.getRootLocation() + "/", location.getReturn()))
+			if (ConfigFile::filePathExistsandReadable(location.getRootLocation() + "/", location.getReturn()) == 0) // on check que le return file existe
 				return (3);
+			// shouldn't work
 		}
 		if (!location.getAlias().empty())
 		{
-			if (ConfigFile::fileExistsandReadable(location.getRootLocation() + "/", location.getAlias()))
+			if (ConfigFile::getTypeFilePath(location.getAlias()) != 2) // on check que l'alias est bien un dir qui existe
 				return (4);
 		}
 	}
 	return (0);
 }
 
+bool ServerConfig::checkDupLocations(void)
+{
+	if (this->_locations.size() < 2)
+		return (false);
+	std::vector<Location>::const_iterator it1;
+	std::vector<Location>::const_iterator it2;
+	for (it1 = this->_locations.begin(); it1 != this->_locations.end() - 1; it1++) {
+		for (it2 = it1 + 1; it2 != this->_locations.end(); it2++) {
+			if (it1->getPath() == it2->getPath())
+				return (true);
+		}
+	}
+	return (false);
+}
 
 // Getters
 

@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 19:12:53 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/20 04:10:21 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/05/20 23:17:44 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,7 +43,7 @@ class ServerConfig
 		void setRoot(std::string root);
 		void setClientMaxBodySize(std::string input);
 		void setErrorPages(std::vector<std::string> &errorPages);
-		static std::string ServerConfig::statusCodeString(int statusCode);
+		std::string statusCodeString(int statusCode);
 		void setIndex(std::string index);
 		void setAutoindex(std::string autoindex);
 		void setLocation(std::string nameLocation, std::vector<std::string> parametr);
@@ -62,11 +62,11 @@ class ServerConfig
 		const std::map<int, std::string> &getErrorPages();
 		const std::string &getIndex();
 		const bool &getAutoindex();
-		const std::string &getPathErrorPage(int key); // ?
-		const std::vector<Location>::iterator getLocationKey(std::string key); // ?
+		//const std::string &getPathErrorPage(int key); // ?
+		//const std::vector<Location>::iterator getLocationKey(std::string key); // ?
 
 		void checkSemiColon(std::string &input);
-		bool checkLocations() const;
+		bool checkDupLocations(void);
 		public:
 		class ErrorException : public std::exception
 		{

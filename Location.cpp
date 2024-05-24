@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 23:25:23 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/20 04:29:08 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/05/23 03:35:59 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,9 +21,7 @@ Location::Location(void)
 	this->_return = "";
 	this->_alias = "";
 	this->_clientMaxBodySizeLoc = MAX_BODY_LENGTH;
-	this->_methods.reserve(5);
-	this->_methods.push_back(0);
-	this->_methods.push_back(0);
+	this->_methods.reserve(3); // pourquoi faire ça ?
 	this->_methods.push_back(0);
 	this->_methods.push_back(0);
 	this->_methods.push_back(0);
@@ -64,17 +62,15 @@ void Location::setPath(std::string pathLoc)
 void Location::setRootLocation(std::string rootLoc)
 {
 	if (ConfigFile::getTypeFilePath(rootLoc) != 2)
-		throw ErrorException("Invalid rood for the location block.");
+		throw ErrorException("Invalid root for the location block.");
 	this->_rootLoc = rootLoc;
 }
 
 void Location::setMethods(std::vector<std::string> methods)
 {
-	this->_methods[0] = 0;
-	this->_methods[1] = 0;
-	this->_methods[2] = 0;
-	this->_methods[3] = 0;
-	this->_methods[4] = 0;
+	// this->_methods[0] = 0;
+	// this->_methods[1] = 0;
+	// this->_methods[2] = 0;
 
 	for (size_t i = 0; i < methods.size(); i++)
 	{
@@ -82,13 +78,42 @@ void Location::setMethods(std::vector<std::string> methods)
 			this->_methods[0] = 1;
 		else if (methods[i] == "POST")
 			this->_methods[1] = 1;
-		else if (methods[i] == "DELETE")
+		else if (methods[i] == "DELETE" && this->_pathLoc != "/cgi-bin")
 			this->_methods[2] = 1;
-		else if (methods[i] == "PUT")
-			this->_methods[3] = 1;
 		else
-			throw ErrorException("Method not supported for: " + methods[i]);
+			throw ErrorException("Method not supported: " + methods[i]);
 	}
+	if (this->_pathLoc == "/cgi-bin" && methods.size() == 0)
+	{
+		for (size_t i = 0; i < 2; i++)
+			this->_methods[i] = 1;
+	}
+	else if (this->_pathLoc != "/cgi-bin" && methods.size() == 0)
+		this->_methods[0] = 1;
+}
+
+std::string Location::getPrintMethods(void) const
+{
+	std::string res;
+	if (_methods[2])
+	{
+		if (!res.empty())
+			res.insert(0, ", ");
+		res.insert(0, "DELETE");
+	}
+	if (_methods[1])
+	{
+		if (!res.empty())
+			res.insert(0, ", ");
+		res.insert(0, "POST");
+	}
+	if (_methods[0])
+	{
+		if (!res.empty())
+			res.insert(0, ", ");
+		res.insert(0, "GET");
+	}
+	return (res);
 }
 
 void Location::setAutoindex(std::string autoIndexLoc)
@@ -154,10 +179,11 @@ const std::string &Location::getIndexLocation() const
 	return (this->_indexLoc);
 }
 
-const std::vector<int> &Location::getMethods() const
+std::vector<int> &Location::getMethods(void)
 {
 	return (this->_methods);
 }
+
 
 const std::vector<std::string> &Location::getCgiInterpreter() const
 {

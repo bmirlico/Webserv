@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/08 13:08:32 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/19 23:26:52 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/05/24 12:55:55 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,6 +20,7 @@ class ServerConfig;
 class ConfigParser
 {
 	private:
+		int	_nbServers;
 		std::vector<ServerConfig> _servers;
 		std::vector<std::string>	_serverConfigs;
 	public:
@@ -34,9 +35,11 @@ class ConfigParser
 		void createServerBlocks(std::string &content);
 		size_t findStartServerBlock(size_t start, std::string &content);
 		size_t findEndServerBlock(size_t start, std::string &content);
+		std::vector<std::string> splitServerBlock(std::string line, std::string sep);
 		void createServer(std::string &config, ServerConfig &server);
+		void checkDupServers(void);
 		std::vector<ServerConfig> getServers() const;
-		//
+		void printServers(void);
 		public:
 		class ErrorException: public std::exception
 		{

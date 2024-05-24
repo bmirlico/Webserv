@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 17:24:48 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/19 19:37:19 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/05/22 22:48:32 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,6 +59,7 @@ int ConfigFile::fileExistsandReadable(std::string const path)
 		return (-1);
 }
 
+// fonction qui permet de tester l'existence d'un fichier via chemin absolu ou relatif
 int ConfigFile::filePathExistsandReadable(std::string const path, std::string const index)
 {
 	if (getTypeFilePath(index) == 1 && fileExistsandReadable(index) == 1)
