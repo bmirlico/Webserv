@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 19:12:28 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/24 12:56:28 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/05/24 16:31:34 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -194,7 +194,7 @@ void ServerConfig::setErrorPages(std::vector<std::string> &errorPages)
 		}
 		if (errorPages[i].size() != 3)
 			throw ErrorException("Error code is a 3-digit number.");
-		int codeError = std::stoi(errorPages[i].c_str(), NULL, 10);
+		int codeError = std::strtol(errorPages[i].c_str(), NULL, 10);
 		if (statusCodeString(codeError)  == "Undefined" || codeError < 400)
 			throw ErrorException ("Incorrect error code: " + errorPages[i]);
 		std::map<int, std::string>::iterator it = this->_errorPages.find(codeError);
@@ -327,6 +327,13 @@ bool ServerConfig::isValidErrorPages(void)
 			return (false);
 	}
 	return (true);
+}
+
+std::string ServerConfig::intToString(int number)
+{
+    std::ostringstream oss;
+    oss << number;
+    return oss.str();
 }
 
 void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
@@ -468,7 +475,7 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 	if (this->_index.empty())
 		throw ErrorException("No default index file, or present after location block.");
 	if (!flagMaxSize)
-		newLocation.setMaxBodySizeLoc(std::to_string(this->_clientMaxBodySize));
+		newLocation.setMaxBodySizeLoc(intToString(this->_clientMaxBodySize));
 	std::vector<std::string> methodsDefault;
 	if (newLocation.getPath() == "/cgi-bin")
 		newLocation.setMethods(methodsDefault); // met les méthodes du CGI par défaut GET et POST

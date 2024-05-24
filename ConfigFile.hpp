@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 17:19:49 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/20 04:10:32 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/05/24 16:24:01 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,6 +14,8 @@
 #define CONFIGFILE_HPP
 
 #include <unistd.h>
+#include <stdio.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <iostream>
 #include <iomanip>

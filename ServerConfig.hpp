@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 19:12:53 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/20 23:17:44 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/05/24 16:31:01 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,6 +67,7 @@ class ServerConfig
 
 		void checkSemiColon(std::string &input);
 		bool checkDupLocations(void);
+		std::string intToString(int number);
 		public:
 		class ErrorException : public std::exception
 		{

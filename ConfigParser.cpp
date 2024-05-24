@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/08 13:25:17 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/24 12:57:30 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/05/24 16:54:30 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -285,6 +285,7 @@ void ConfigParser::createServer(std::string &config, ServerConfig &server)
 			if (!server.getIndex().empty())
 				throw  ErrorException("Index is duplicated");
 			server.setIndex(input[++i]);
+			
 		}
 		else if (input[i] == "autoindex" && (i + 1) < input.size() && flagLoc)
 		{
