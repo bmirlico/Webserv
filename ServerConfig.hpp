@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 19:12:53 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/24 16:31:01 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/18 18:35:38 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -51,7 +51,7 @@ class ServerConfig
 		bool isInteger(std::string& s);
 		bool isValidHost(std::string host);
 		bool isValidErrorPages(void);
-		int isValidLocation(Location &location) const;
+		//int isValidLocation(Location &location) const; fonction supprimée car Clément vérifie toutes les permissions dans sa partie
 
 		const std::string &getServerName();
 		const uint16_t &getPort();

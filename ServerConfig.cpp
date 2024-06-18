@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 19:12:28 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/24 16:31:34 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/18 18:35:14 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,7 +71,7 @@ void ServerConfig::checkSemiColon(std::string &input)
 {
 	size_t pos = input.rfind(';');
 	if (pos != input.size() - 1)
-		throw ErrorException("Invalid format: each directive should be finished with ;.");
+		throw ErrorException("Invalid format: each directive should be finished with ; .");
 	input.erase(pos);
 }
 
@@ -352,9 +352,11 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 		{
 			if (!newLocation.getRootLocation().empty())
 				throw ErrorException("Root of location is duplicated.");
+			if (!newLocation.getAlias().empty())
+				throw ErrorException("Root and alias can't be defined in the same location block.");
 			checkSemiColon(input[++i]);
-			if (ConfigFile::getTypeFilePath(input[i]) != 2)
-				throw ErrorException("Invalid root of location.");
+			// if (ConfigFile::getTypeFilePath(input[i]) != 2)
+			// 	throw ErrorException("Invalid root of location.");
 			newLocation.setRootLocation(input[i]);
 		}
 		else if ((input[i] == "allow_methods" || input[i] == "methods") && (i + 1) < input.size())
@@ -408,10 +410,12 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 		}
 		else if (input[i] == "alias" && (i + 1) < input.size())
 		{
+			if (!newLocation.getRootLocation().empty())
+				throw ErrorException("Root and alias can't be defined in the same location block.");
 			if (path == "/cgi-bin")
 				throw ErrorException("Alias not allowed for CGI");
 			if (!newLocation.getAlias().empty())
-				throw ErrorException("Alias of location is duplicated");
+				throw ErrorException("Alias of location block is duplicated.");
 			checkSemiColon(input[++i]);
 			newLocation.setAlias(input[i]);
 		}
@@ -466,7 +470,7 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 			flagMaxSize= true;
 		}
 		else if (i < input.size())
-			throw ErrorException("Invalid parameter in a location bloc."); // ? to check avec un cas particulier
+			throw ErrorException("Unsupported directive in location block."); // condition qui vérifie si on nous envoie n'importe quoi dans le block location et renvoie une error
 	}
 	if (newLocation.getPath() != "/cgi-bin" && newLocation.getRootLocation().empty()) // s'il n'y pas de root dans le block location on met le root du server
 		newLocation.setRootLocation(this->_root); // on recheck plus tard si root du server existe, s'il n'existe pas => error
@@ -481,98 +485,7 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 		newLocation.setMethods(methodsDefault); // met les méthodes du CGI par défaut GET et POST
 	else
 		newLocation.setMethods(methodsDefault); // met la méthode GET par défaut pour les blocs location classique
-	valid = isValidLocation(newLocation);
-	if (valid == 1)
-		throw ErrorException("Failed CGI validation.");
-	else if (valid == 2)
-		throw ErrorException("Failed path in location validation.");
-	else if (valid == 3)
-		throw ErrorException("Failed redirection file in location block.");
-	else if (valid == 4)
-		throw ErrorException("Failed alias file in location block.");
-	else if (valid == 5)
-		throw ErrorException("Failed route in location block.");
-	else if (valid == 6)
-		throw ErrorException("Failed index in location block.");
 	this->_locations.push_back(newLocation);
-}
-
-// fonction qui check les paramètre du block location
-// TO CHECK => isvalidlocation + tester toutes les permissions de fichier
-int ServerConfig::isValidLocation(Location &location) const
-{
-	if (location.getPath() == "/cgi-bin")
-	{
-		// std::cout << location.getRootLocation() << std::endl;
-		// std::cout << location.getIndexLocation() << std::endl;
-		// for (size_t i = 0; i < location.getCgiInterpreter().size(); i++)
-		// 	std::cout << location.getCgiInterpreter()[i] << std::endl;
-		// for (size_t i = 0; i < location.getCgiExtension().size(); i++)
-		// 	std::cout << location.getCgiExtension()[i] << std::endl;
-		if (location.getCgiInterpreter().empty() || location.getCgiExtension().empty() || location.getRootLocation().empty() || location.getIndexLocation().empty())
-			return (1);
-		if (ConfigFile::fileExistsandReadable(this->_root + "/" + location.getIndexLocation()) < 0)
-		{
-			std::string path = location.getRootLocation() + location.getPath() + "/" + location.getIndexLocation();
-			if (ConfigFile::fileExistsandReadable(path) < 0)
-				return (1);
-		}
-		if (location.getCgiInterpreter().size() != location.getCgiExtension().size())
-			return (1);
-		std::vector<std::string>::const_iterator it;
-		for (it = location.getCgiInterpreter().begin(); it != location.getCgiInterpreter().end(); ++it)
-		{
-			if (ConfigFile::fileExistsandReadable(*it) < 0)
-				return (1);
-		}
-		std::vector<std::string>::const_iterator it_path;
-		for (it = location.getCgiExtension().begin(); it != location.getCgiExtension().end(); ++it)
-		{
-			std::string tmp = *it;
-			if (tmp != ".py" && tmp != ".sh")
-				return (1);
-			for (it_path = location.getCgiInterpreter().begin(); it_path != location.getCgiInterpreter().end(); ++it_path)
-			{
-				std::string tmp_path = *it_path;
-				if (tmp == ".py")
-				{
-					if (tmp_path.find("python") != std::string::npos)
-						location._extensions[".py"] = tmp_path; // besoin d'un getter ?
-				}
-				else if (tmp == ".sh")
-				{
-					if (tmp_path.find("bash") != std::string::npos)
-						location._extensions[".sh"] = tmp_path;
-				}
-			}
-		}
-		if (location.getCgiInterpreter().size() != location.getExtensionPath().size())
-			return (1);
-	}
-	else
-	{
-		if (location.getPath()[0] != '/')
-			return (2);
-		if (location.getRootLocation().empty()) {
-			location.setRootLocation(this->_root);
-		}
-		// if (ConfigFile::getTypeFilePath(location.getRootLocation() + location.getPath()) != 2) // on check que le root + path est bien un dir qui existe, est-ce vraiment nécessaire ?
-		// 	return (5);
-		if (ConfigFile::filePathExistsandReadable(location.getRootLocation() + "/", location.getIndexLocation()) == 0) // on check que l'index file existe
-			return (6);
-		if (!location.getReturn().empty())
-		{
-			if (ConfigFile::filePathExistsandReadable(location.getRootLocation() + "/", location.getReturn()) == 0) // on check que le return file existe
-				return (3);
-			// shouldn't work
-		}
-		if (!location.getAlias().empty())
-		{
-			if (ConfigFile::getTypeFilePath(location.getAlias()) != 2) // on check que l'alias est bien un dir qui existe
-				return (4);
-		}
-	}
-	return (0);
 }
 
 bool ServerConfig::checkDupLocations(void)

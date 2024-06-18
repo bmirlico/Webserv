@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/08 13:25:17 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/24 16:54:30 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/18 18:07:19 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -108,8 +108,10 @@ void ConfigParser::createServers(const std::string &configFile)
 		createServer(this->_serverConfigs[i], server);
 		this->_servers.push_back(server);
 	}
-	if (this->_nbServers > 1)
-		checkDupServers();
+	// Check les servers qui ont même host, port et server name
+	// Je laisse ça au cas où en commentaire, mais nginx se lance en prenant comme server par défaut le premier block server rencontré
+	// if (this->_nbServers > 1) 
+	// 	checkDupServers();
 }
 
 // enlève les commentaires en fin de chaque ligne, si jamais on nous envoie un fichier de conf avec des comments
@@ -141,6 +143,8 @@ void ConfigParser::removeSpaces(std::string &content)
 	content = content.substr(0, i + 1);
 }
 
+// fonction qui sépare chaque block server et les ajoute à un tableau (_serverConfigs) qui contient les config de chaque serveur
+// config de chaque serveur = un vector de string qui va de { à }
 void ConfigParser::createServerBlocks(std::string &content)
 {
 	size_t start = 0;
@@ -153,7 +157,7 @@ void ConfigParser::createServerBlocks(std::string &content)
 		start = findStartServerBlock(start, content);
 		end = findEndServerBlock(start, content);
 		if (start == end)
-			throw ErrorException("Block Server scope is missing.");
+			throw ErrorException("Server or location block is not closed.");
 		this->_serverConfigs.push_back(content.substr(start, end - start + 1));
 		this->_nbServers++;
 		start = end + 1;
@@ -229,13 +233,15 @@ void ConfigParser::createServer(std::string &config, ServerConfig &server)
 {
 	std::vector<std::string>	input;
 	std::vector<std::string>	error_codes;
-	int		flagLoc = 1;
+	int		flagLoc = 1; // pour bien différencier les directives server de celles du block location
 	bool	flagAutoIndex = false;
 	bool	flagMaxSize = false;
 
 	input = splitServerBlock(config += ' ', std::string(" \n\t"));
-	if (input.size() < 3) // pourquoi est ce pertinent ici ? je peux le faire après
-		throw  ErrorException("Failed server validation.");
+	// for (size_t i = 0; i < input.size(); i++)
+	// 	std::cout << input[i] << std::endl;
+	if (input.size() < 3) // si jamais j'ai un block server avec seulement {}
+		throw  ErrorException("No directives found in server block.");
 	for (size_t i = 0; i < input.size(); i++)
 	{
 		if (input[i] == "listen" && (i + 1) < input.size() && flagLoc)
@@ -298,42 +304,31 @@ void ConfigParser::createServer(std::string &config, ServerConfig &server)
 		{
 			std::string	path;
 			i++;
-			if (input[i] == "{" || input[i] == "}")
+			if (input[i] == "{" || input[i] == "}") // vérifie si un chemin est bien indiqué juste après location
 				throw  ErrorException("Wrong character in location block.");
 			path = input[i];
 			std::vector<std::string> params;
-			if (input[++i] != "{")
+			if (input[++i] != "{") // vérifie l'ouverture du bloc location
 				throw  ErrorException("Wrong character in location block.");
 			i++;
 			while (i < input.size() && input[i] != "}")
 				params.push_back(input[i++]);
 			server.setLocation(path, params);
-			if (i < input.size() && input[i] != "}")
-				throw  ErrorException("Wrong character in server scope{}");
+			if (i < input.size() && input[i] != "}") // vérifie si le bloc location est bien fermé par un }
+				throw  ErrorException("Wrong character in location block.");
 			flagLoc = 0;
 		}
 		else if (input[i] != "}" && input[i] != "{")
-		{
-			if (!flagLoc)
-				throw  ErrorException("Parameters after location.");
-			else
-				throw  ErrorException("Unsupported directive.");
-		}
+			throw  ErrorException("Unsupported directive in server block."); // tout ce qui n'est pas censé être dans un block server
 	}
-	if (server.getRoot().empty())
-		throw ErrorException("Root from config file not found.");
-	if (server.getPort() == 0)
-		server.setPort("8080;");
-	if (server.getHost() == "")
+	if (server.getHost() == "") // vérifie si l'IP est renseignée ou non, si ce n'est pas le cas => 127.0.0.1 par défaut
 		server.setHost("localhost;");
-	if (server.getIndex().empty())
-		server.setIndex("index.html;");
-	if (ConfigFile::fileExistsandReadable(server.getRoot() + "/" + server.getIndex()) < 0)
-		throw ErrorException("Index from config file not found or unreadable.");
-	if (server.checkDupLocations())
-		throw ErrorException("Location block is duplicated.");
+	if (server.getPort() == 0) // vérifie si le port est renseigné ou non, si ce n'est pas le cas => 8080 par défaut
+		server.setPort("8080;");
 	if (!server.getPort())
 		throw ErrorException("Port not found.");
+	if (server.getRoot().empty()) // vérifie si par défaut un root est bien présent dans le block server, si ce n'est pas le cas renvoie une error
+		throw ErrorException("Root from config file not found.");
 	server.setErrorPages(error_codes);
 	if (!server.isValidErrorPages())
 		throw ErrorException("Incorrect path for error page or number of error");
