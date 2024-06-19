@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/08 13:25:17 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/06/18 18:07:19 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/20 00:44:26 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -57,23 +57,23 @@ void ConfigParser::printServers(void)
 			std::cout << "methods: " << itl->getPrintMethods() << std::endl;
 			std::cout << "index: " << itl->getIndexLocation() << std::endl;
 			std::cout << "Max Body Size loc: " << itl->getMaxBodySizeLoc() << std::endl;
-			if (itl->getCgiExtension().size() == 0)
+			if (itl->getPath() != "/cgi-bin")
 			{
 				std::cout << "root: " << itl->getRootLocation() << std::endl;
-				if (!itl->getReturn().empty())
-					std::cout << "return: " << itl->getReturn() << std::endl;
+				if (itl->getReturn().size() > 0)
+				{
+					std::cout << "return: " << std::endl;
+					for (size_t i = 0; i < itl->getReturn().size(); i++)
+						std::cout << itl->getReturn()[i] << std::endl;
+				}
 				if (!itl->getAlias().empty())
 					std::cout << "alias: " << itl->getAlias() << std::endl;
 			}
 			else
 			{
 				std::cout << "cgi root: " << itl->getRootLocation() << std::endl;
-				std::cout << "cgi_interpreters: " << std::endl;
-				for (size_t i = 0; i < itl->getCgiInterpreter().size(); i++)
-					std::cout << itl->getCgiInterpreter()[i] << std::endl;
-				std::cout << "cgi_ext: " << std::endl;
-				for (size_t i = 0; i < itl->getCgiExtension().size(); i++)
-					std::cout << itl->getCgiExtension()[i] << std::endl;
+				std::cout << "cgi_interpreters: " << itl->getCgiInterpreter() << std::endl;
+				std::cout << "cgi_ext: " << itl->getCgiExtension() << std::endl;
 			}
 			++itl;
 		}
@@ -233,7 +233,7 @@ void ConfigParser::createServer(std::string &config, ServerConfig &server)
 {
 	std::vector<std::string>	input;
 	std::vector<std::string>	error_codes;
-	int		flagLoc = 1; // pour bien différencier les directives server de celles du block location
+	//int		flagLoc = 1; // pour bien différencier les directives server de celles du block location
 	bool	flagAutoIndex = false;
 	bool	flagMaxSize = false;
 
@@ -244,25 +244,25 @@ void ConfigParser::createServer(std::string &config, ServerConfig &server)
 		throw  ErrorException("No directives found in server block.");
 	for (size_t i = 0; i < input.size(); i++)
 	{
-		if (input[i] == "listen" && (i + 1) < input.size() && flagLoc)
+		if (input[i] == "listen" && (i + 1) < input.size())
 		{
 			if (server.getPort())
-				throw  ErrorException("Port is duplicated");
+				throw  ErrorException("Port is duplicated.");
 			server.setPort(input[++i]);
 		}
-		else if (input[i] == "host" && (i + 1) < input.size() && flagLoc)
+		else if (input[i] == "host" && (i + 1) < input.size())
 		{
 			if (!server.getHost().empty())
-				throw  ErrorException("Host is duplicated");
+				throw  ErrorException("Host is duplicated.");
 			server.setHost(input[++i]);
 		}
-		else if (input[i] == "root" && (i + 1) < input.size() && flagLoc)
+		else if (input[i] == "root" && (i + 1) < input.size())
 		{
 			if (!server.getRoot().empty())
-				throw  ErrorException("Root is duplicated");
+				throw  ErrorException("Root is duplicated.");
 			server.setRoot(input[++i]);
 		}
-		else if (input[i] == "error_page" && (i + 1) < input.size() && flagLoc)
+		else if (input[i] == "error_page" && (i + 1) < input.size())
 		{
 			while (++i < input.size())
 			{
@@ -270,33 +270,34 @@ void ConfigParser::createServer(std::string &config, ServerConfig &server)
 				if (input[i].find(';') != std::string::npos)
 					break ;
 				if (i + 1 >= input.size())
-					throw ErrorException("Wrong character out of server scope{}");
+					throw ErrorException("Wrong character out of server scope{}.");
 			}
+			server.setErrorPages(error_codes);
+			error_codes.clear();
 		}
-		else if (input[i] == "client_max_body_size" && (i + 1) < input.size() && flagLoc)
+		else if (input[i] == "client_max_body_size" && (i + 1) < input.size())
 		{
 			if (flagMaxSize)
-				throw  ErrorException("Client_max_body_size is duplicated");
+				throw  ErrorException("Client_max_body_size is duplicated.");
 			server.setClientMaxBodySize(input[++i]);
 			flagMaxSize = true;
 		}
-		else if (input[i] == "server_name" && (i + 1) < input.size() && flagLoc)
+		else if (input[i] == "server_name" && (i + 1) < input.size())
 		{
 			if (!server.getServerName().empty())
-				throw  ErrorException("Server_name is duplicated");
+				throw  ErrorException("Server_name is duplicated.");
 			server.setServerName(input[++i]);
 		}
-		else if (input[i] == "index" && (i + 1) < input.size() && flagLoc)
+		else if (input[i] == "index" && (i + 1) < input.size())
 		{
 			if (!server.getIndex().empty())
-				throw  ErrorException("Index is duplicated");
+				throw  ErrorException("Index is duplicated.");
 			server.setIndex(input[++i]);
-			
 		}
-		else if (input[i] == "autoindex" && (i + 1) < input.size() && flagLoc)
+		else if (input[i] == "autoindex" && (i + 1) < input.size())
 		{
 			if (flagAutoIndex)
-				throw ErrorException("Autoindex of server is duplicated");
+				throw ErrorException("Autoindex of server is duplicated.");
 			server.setAutoindex(input[++i]);
 			flagAutoIndex = true;
 		}
@@ -316,26 +317,33 @@ void ConfigParser::createServer(std::string &config, ServerConfig &server)
 			server.setLocation(path, params);
 			if (i < input.size() && input[i] != "}") // vérifie si le bloc location est bien fermé par un }
 				throw  ErrorException("Wrong character in location block.");
-			flagLoc = 0;
+			//flagLoc = 0;
 		}
 		else if (input[i] != "}" && input[i] != "{")
 			throw  ErrorException("Unsupported directive in server block."); // tout ce qui n'est pas censé être dans un block server
 	}
-	if (server.getHost() == "") // vérifie si l'IP est renseignée ou non, si ce n'est pas le cas => 127.0.0.1 par défaut
-		server.setHost("localhost;");
+	// checks dans le block server
 	if (server.getPort() == 0) // vérifie si le port est renseigné ou non, si ce n'est pas le cas => 8080 par défaut
 		server.setPort("8080;");
-	if (!server.getPort())
-		throw ErrorException("Port not found.");
+	if (server.getHost() == "") // vérifie si l'IP est renseignée ou non, si ce n'est pas le cas => 127.0.0.1 par défaut
+		server.setHost("localhost;");
 	if (server.getRoot().empty()) // vérifie si par défaut un root est bien présent dans le block server, si ce n'est pas le cas renvoie une error
 		throw ErrorException("Root from config file not found.");
-	server.setErrorPages(error_codes);
-	if (!server.isValidErrorPages())
-		throw ErrorException("Incorrect path for error page or number of error");
-	
+	// checks dans le block location
+	if (server.checkDupLocations()) // vérifie si un block location est dupliqué ou non, si c'est le cas renvoie une error
+		throw ErrorException("Duplicate location block.");
+	// fonction qui met par défaut les directives du block location
+	// root, max body size, index
+	// if (newLocation.getPath() != "/cgi-bin" && newLocation.getRootLocation().empty()) // s'il n'y pas de root dans le block location on met le root du server
+	// 	newLocation.setRootLocation(this->_root); // on recheck plus tard si root du server existe, s'il n'existe pas => error
+	// if (newLocation.getIndexLocation().empty())
+	// 	newLocation.setIndexLocation(this->_index);
+	// if (!flagMaxSize)
+	// 	newLocation.setMaxBodySizeLoc(intToString(this->_clientMaxBodySize));
 }
 
 // fonction qui vérifie si 2 blocks Server ont le même server name, host et port
+// fonction que je n'utilise pas finalement car nginx se lance quand même dans le cas où il y a 2 block servers similaires
 void ConfigParser::checkDupServers(void)
 {
 	std::vector<ServerConfig>::iterator it1;

@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 23:25:23 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/23 03:35:59 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/20 00:00:32 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,6 @@ Location::Location(void)
 	this->_rootLoc = "";
 	this->_autoIndexLoc = false;
 	this->_indexLoc = "";
-	this->_return = "";
 	this->_alias = "";
 	this->_clientMaxBodySizeLoc = MAX_BODY_LENGTH;
 	this->_methods.reserve(3); // pourquoi faire ça ?
@@ -56,13 +55,13 @@ Location::~Location() { }
 /* set functions */
 void Location::setPath(std::string pathLoc)
 {
+	if (pathLoc[0] != '/')
+		throw ErrorException("Path should start with '/' in location block.");
 	this->_pathLoc = pathLoc;
 }
 
 void Location::setRootLocation(std::string rootLoc)
 {
-	if (ConfigFile::getTypeFilePath(rootLoc) != 2)
-		throw ErrorException("Invalid root for the location block.");
 	this->_rootLoc = rootLoc;
 }
 
@@ -83,11 +82,14 @@ void Location::setMethods(std::vector<std::string> methods)
 		else
 			throw ErrorException("Method not supported: " + methods[i]);
 	}
+	// cas où la directive allow_methods n'est pas renseignéee
+	// si c'est un block CGI, uniquement POST et GET acceptés
 	if (this->_pathLoc == "/cgi-bin" && methods.size() == 0)
 	{
 		for (size_t i = 0; i < 2; i++)
 			this->_methods[i] = 1;
 	}
+	// si c'est un block location standard, GET est mis par défaut
 	else if (this->_pathLoc != "/cgi-bin" && methods.size() == 0)
 		this->_methods[0] = 1;
 }
@@ -129,8 +131,15 @@ void Location::setIndexLocation(std::string indexLoc)
 	this->_indexLoc = indexLoc;
 }
 
-void Location::setReturn(std::string input)
+void Location::setReturn(std::vector<std::string> input)
 {
+	if (input.size() != 2) // on peut avoir un return 301 par ex, mais je n'ai pas su le tester donc j'ai laissé tel que le sujet le demandait => une redirection vers un fichier pour moi
+		throw ErrorException("Invalid number of arguments for return directive.");
+	long returnCode;
+	char *p;
+	returnCode = std::strtol(input[0].c_str(), &p, 10);
+	if (returnCode < 0 || returnCode > 999 || *p != '\0')
+		throw ErrorException("Invalid return code in return directive.");
 	this->_return = input;
 }
 
@@ -139,27 +148,30 @@ void Location::setAlias(std::string input)
 	this->_alias = input;
 }
 
-void Location::setCgiInterpreter(std::vector<std::string> path)
+void Location::setCgiInterpreter(std::string path)
 {
 	this->_cgiInterpreter = path;
 }
 
-void Location::setCgiExtension(std::vector<std::string> extension)
+void Location::setCgiExtension(std::string extension)
 {
 	this->_cgiExt = extension;
 }
 
 void Location::setMaxBodySizeLoc(std::string input)
 {
-	unsigned long body_size;
+	long long body_size;
 	
 	body_size = 0;
+	errno = 0;
 	for (size_t i = 0; i < input.length(); i++)
 	{
-		if (!std::isdigit(input[i]))
-			throw ErrorException("Client_max_body_size can only be an integer.");
+		if (!(std::isdigit(input[i])))
+			throw ErrorException("Client_max_body_size can only be a positive integer.");
 	}
-	body_size = std::strtol(input.c_str(), NULL, 10);;
+	body_size = std::strtoll(input.c_str(), NULL, 10);
+	if (errno == ERANGE && body_size == LLONG_MAX)
+		throw ErrorException("Invalid client_max_body_size value.");
 	this->_clientMaxBodySizeLoc = body_size;
 }
 
@@ -185,12 +197,12 @@ std::vector<int> &Location::getMethods(void)
 }
 
 
-const std::vector<std::string> &Location::getCgiInterpreter() const
+const std::string &Location::getCgiInterpreter() const
 {
 	return (this->_cgiInterpreter);
 }
 
-const std::vector<std::string> &Location::getCgiExtension() const
+const std::string &Location::getCgiExtension() const
 {
 	return (this->_cgiExt);
 }
@@ -200,7 +212,7 @@ const bool &Location::getAutoIndexLoc() const
 	return (this->_autoIndexLoc);
 }
 
-const std::string &Location::getReturn() const
+const std::vector<std::string> &Location::getReturn() const
 {
 	return (this->_return);
 }

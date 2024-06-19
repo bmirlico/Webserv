@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 17:19:49 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/05/24 16:24:01 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/19 22:56:09 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,6 +23,8 @@
 #include <string>
 #include <cstring>
 #include <cstdlib>
+#include <climits>
+#include <cerrno>
 #include <sstream>
 #include <fstream>
 #include <algorithm>

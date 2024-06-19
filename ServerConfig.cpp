@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 19:12:28 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/06/18 18:35:14 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/20 00:51:08 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -121,10 +121,7 @@ bool ServerConfig::isValidHost(std::string host)
 void ServerConfig::setRoot(std::string root)
 {
 	checkSemiColon(root);
-	if (ConfigFile::getTypeFilePath(root) == 2)
-		this->_root = root;
-	else
-		throw ErrorException("Wrong syntax: root");
+	this->_root = root;
 }
 
 void ServerConfig::setPort(std::string input)
@@ -139,23 +136,28 @@ void ServerConfig::setPort(std::string input)
 			throw ErrorException("Port can only be an integer.");
 	}
 	port = std::strtol(input.c_str(), NULL, 10);
-	if (port < 1 || port > 65635)
-		throw ErrorException("Invalid port number.");
+	if (port > 65635)
+		throw ErrorException("Invalid port value, too high.");
+	else if (port < 1024)
+		throw ErrorException("Invalid port value, permission denied.");
 	this->_port = (uint16_t)port;
 }
 
 void ServerConfig::setClientMaxBodySize(std::string input)
 {
-	unsigned long body_size;
+	long long body_size;
 	
 	body_size = 0;
+	errno = 0;
 	checkSemiColon(input);
 	for (size_t i = 0; i < input.length(); i++)
 	{
-		if (!std::isdigit(input[i]))
-			throw ErrorException("Client_max_body_size can only be an integer.");
+		if (!(std::isdigit(input[i])))
+			throw ErrorException("Client_max_body_size can only be a positive integer.");
 	}
-	body_size = std::strtol(input.c_str(), NULL, 10);;
+	body_size = std::strtoll(input.c_str(), NULL, 10);
+	if (errno == ERANGE && body_size == LLONG_MAX)
+		throw ErrorException("Invalid client_max_body_size value.");
 	this->_clientMaxBodySize = body_size;
 }
 
@@ -178,30 +180,25 @@ void ServerConfig::setErrorPages(std::vector<std::string> &errorPages)
 {
 	if (errorPages.empty())
 		return ;
-	// if (errorPages.size() % 2 != 0)
-	// 	throw ErrorException ("Error page initialization failed");
+	if (errorPages.size() < 2) // le vector error_page doit au moins contenir un code d'error et une page d'erreur
+		throw ErrorException ("Error page initialization failed.");
 	std::string errorPagePath = errorPages.back();
 	checkSemiColon(errorPagePath);
-	if (ConfigFile::getTypeFilePath((this->_root + errorPagePath)) != 1)
-			throw ErrorException ("Incorrect path for error page file: " + errorPagePath);
-	if (ConfigFile::filePathExistsandReadable(this->_root + "/", errorPagePath) != 1)
-			throw ErrorException ("Error page file :" + errorPagePath + " is not accessible");
 	for (size_t i = 0; i < errorPages.size() - 1; i++)
 	{
-		for (size_t j = 0; j < errorPages[i].size(); j++) {
+		for (size_t j = 0; j < errorPages[i].size(); j++)
+		{
 			if (!std::isdigit(errorPages[i][j]))
 				throw ErrorException("Error code should only contain digits.");
 		}
-		if (errorPages[i].size() != 3)
-			throw ErrorException("Error code is a 3-digit number.");
 		int codeError = std::strtol(errorPages[i].c_str(), NULL, 10);
-		if (statusCodeString(codeError)  == "Undefined" || codeError < 400)
+		if (codeError < 300 || codeError > 599)
 			throw ErrorException ("Incorrect error code: " + errorPages[i]);
 		std::map<int, std::string>::iterator it = this->_errorPages.find(codeError);
-		if (it != _errorPages.end())
-			this->_errorPages[codeError] = errorPagePath;
-		else
+		if (it == this->_errorPages.end())
 			this->_errorPages.insert(std::make_pair(codeError, errorPagePath));
+		else
+			throw ErrorException("Error code is duplicated."); // j'ai décidé qu'on ne pouvait pas avoir 2x le même error code pour faciliter le parsing
 	}
 }
 
@@ -323,8 +320,6 @@ bool ServerConfig::isValidErrorPages(void)
 	{
 		if (it->first < 100 || it->first > 599)
 			return (false);
-		if (ConfigFile::fileExistsandReadable(this->getRoot() + "/" + it->second) < 0)
-			return (false);
 	}
 	return (true);
 }
@@ -343,26 +338,23 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 	bool flag_methods = false;
 	bool flagAutoIndex = false;
 	bool flagMaxSize = false;
-	int valid;
 
 	newLocation.setPath(path);
 	for (size_t i = 0; i < input.size(); i++)
 	{
 		if (input[i] == "root" && (i + 1) < input.size())
 		{
-			if (!newLocation.getRootLocation().empty())
+			if (!newLocation.getRootLocation().empty()) // vérifie si le root du block location est dupliqué ou non
 				throw ErrorException("Root of location is duplicated.");
-			if (!newLocation.getAlias().empty())
+			if (!newLocation.getAlias().empty()) // vérifie s'il y a une directive alias en plus de root, et si tel est le cas renvoie une error
 				throw ErrorException("Root and alias can't be defined in the same location block.");
 			checkSemiColon(input[++i]);
-			// if (ConfigFile::getTypeFilePath(input[i]) != 2)
-			// 	throw ErrorException("Invalid root of location.");
 			newLocation.setRootLocation(input[i]);
 		}
-		else if ((input[i] == "allow_methods" || input[i] == "methods") && (i + 1) < input.size())
+		else if ((input[i] == "allow_methods") && (i + 1) < input.size())
 		{
 			if (flag_methods)
-				throw ErrorException("Allow_methods of location is duplicated");
+				throw ErrorException("Allow_methods of location block is duplicated.");
 			std::vector<std::string> methods;
 			while (++i < input.size())
 			{
@@ -402,11 +394,26 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 		else if (input[i] == "return" && (i + 1) < input.size())
 		{
 			if (path == "/cgi-bin")
-				throw ErrorException("Return not allowed for CGI location block");
+				throw ErrorException("Return not allowed for CGI location block.");
 			if (!newLocation.getReturn().empty())
-				throw ErrorException("Return of location is duplicated");
-			checkSemiColon(input[++i]);
-			newLocation.setReturn(input[i]);
+				throw ErrorException("Return of location block is duplicated.");
+			std::vector<std::string> redirs;
+			while (++i < input.size())
+			{
+				if (input[i].find(";") != std::string::npos)
+				{
+					checkSemiColon(input[i]);
+					redirs.push_back(input[i]);
+					break ;
+				}
+				else
+				{
+					redirs.push_back(input[i]);
+					if (i + 1 >= input.size())
+						throw ErrorException("Invalid redirection, out of location scope.");
+				}
+			}
+			newLocation.setReturn(redirs);
 		}
 		else if (input[i] == "alias" && (i + 1) < input.size())
 		{
@@ -421,44 +428,34 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 		}
 		else if (input[i] == "cgi_ext" && (i + 1) < input.size())
 		{
-			std::vector<std::string> extension;
-			while (++i < input.size())
+			if (path != "/cgi-bin")
+				throw ErrorException("Cgi_ext not allowed for non CGI location block.");
+			std::string extension;
+			if (input[++i].find(";") != std::string::npos)
 			{
-				if (input[i].find(";") != std::string::npos)
-				{
-					checkSemiColon(input[i]);
-					extension.push_back(input[i]);
-					break ;
-				}
-				else
-				{
-					extension.push_back(input[i]);
-					if (i + 1 >= input.size())
-						throw ErrorException("Invalid CGI extension, out of location scope.");
-				}
+				checkSemiColon(input[i]);
+				extension = input[i];
 			}
+			else
+				throw ErrorException("Only one CGI extension required.");
+			if (extension != ".py")
+				throw ErrorException("Invalid CGI extension, must be '.py'.");
 			newLocation.setCgiExtension(extension);
 		}
 		else if (input[i] == "cgi_interpreter" && (i + 1) < input.size())
 		{
-			std::vector<std::string> path;
-			while (++i < input.size())
+			if (path != "/cgi-bin")
+				throw ErrorException("Cgi_interpreter not allowed for non CGI location block.");
+			std::string path;
+			if (input[++i].find(";") != std::string::npos)
 			{
-				if (input[i].find(";") != std::string::npos)
-				{
-					checkSemiColon(input[i]);
-					path.push_back(input[i]);
-					break ;
-				}
-				else
-				{
-					path.push_back(input[i]);
-					if (i + 1 >= input.size())
-						throw ErrorException("Invalid CGI interpreter, out of location scope.");
-				}
-				if (input[i].find("/python") == std::string::npos && input[i].find("/bash") == std::string::npos)
-					throw ErrorException("cgi_interpreter path is invalid.");
+				checkSemiColon(input[i]);
+				path = input[i];
 			}
+			else
+				throw ErrorException("Only one CGI interpreter required.");
+			if (input[i].find("/python") == std::string::npos)
+				throw ErrorException("cgi_interpreter path is invalid, must contain '/python'.");
 			newLocation.setCgiInterpreter(path);
 		}
 		else if (input[i] == "client_max_body_size" && (i + 1) < input.size())
@@ -470,24 +467,17 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 			flagMaxSize= true;
 		}
 		else if (i < input.size())
+		{
+			std::cout << input[i] << std::endl;
 			throw ErrorException("Unsupported directive in location block."); // condition qui vérifie si on nous envoie n'importe quoi dans le block location et renvoie une error
+		}
 	}
-	if (newLocation.getPath() != "/cgi-bin" && newLocation.getRootLocation().empty()) // s'il n'y pas de root dans le block location on met le root du server
-		newLocation.setRootLocation(this->_root); // on recheck plus tard si root du server existe, s'il n'existe pas => error
-	if (newLocation.getIndexLocation().empty())
-		newLocation.setIndexLocation(this->_index);
-	if (this->_index.empty())
-		throw ErrorException("No default index file, or present after location block.");
-	if (!flagMaxSize)
-		newLocation.setMaxBodySizeLoc(intToString(this->_clientMaxBodySize));
 	std::vector<std::string> methodsDefault;
-	if (newLocation.getPath() == "/cgi-bin")
-		newLocation.setMethods(methodsDefault); // met les méthodes du CGI par défaut GET et POST
-	else
-		newLocation.setMethods(methodsDefault); // met la méthode GET par défaut pour les blocs location classique
+	newLocation.setMethods(methodsDefault); // met les méthodes du CGI par défaut GET et la méthode GET par défaut pour les blocs location classique
 	this->_locations.push_back(newLocation);
 }
 
+// fonction qui check si 2 blocks location sont identiques ! 
 bool ServerConfig::checkDupLocations(void)
 {
 	if (this->_locations.size() < 2)
