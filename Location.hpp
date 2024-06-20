@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 23:26:05 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/06/19 23:52:15 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/20 12:49:13 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@ class Location
 		std::string					_rootLoc; // le root du block
 		bool						_autoIndexLoc;
 		std::string					_indexLoc; // l'index file du block
+		std::string					_uploadLoc;
 		std::vector<int>			_methods; // GET + POST + DELETE
 		std::vector<std::string>			_return;
 		std::string					_alias;
@@ -42,6 +43,7 @@ class Location
 		void setMethods(std::vector<std::string> methods);
 		void setAutoindex(std::string autoIndexLoc);
 		void setIndexLocation(std::string indexLoc);
+		void setUploadLocation(std::string uploadLoc);
 		void setReturn(std::vector<std::string> input);
 		void setAlias(std::string input);
 		void setCgiInterpreter(std::string path);
@@ -53,6 +55,7 @@ class Location
 		std::vector<int> &getMethods();
 		const bool &getAutoIndexLoc() const;
 		const std::string &getIndexLocation() const;
+		const std::string &getUploadLocation() const;
 		const std::vector<std::string> &getReturn() const;
 		const std::string &getAlias() const;
 		const std::string &getCgiInterpreter() const;

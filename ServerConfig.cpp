@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 19:12:28 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/06/20 00:51:08 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/20 12:55:36 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,7 +71,7 @@ void ServerConfig::checkSemiColon(std::string &input)
 {
 	size_t pos = input.rfind(';');
 	if (pos != input.size() - 1)
-		throw ErrorException("Invalid format: each directive should be finished with ; .");
+		throw ErrorException("Invalid format: each directive should be finished with ';' .");
 	input.erase(pos);
 }
 
@@ -87,7 +87,7 @@ void ServerConfig::setHost(std::string host)
 	if (host == "localhost")
 		host = "127.0.0.1";
 	if (!isValidHost(host))
-		throw ErrorException("Wrong syntax: host");
+		throw ErrorException("Wrong syntax: host.");
 	this->_host = host;
 }
 
@@ -324,7 +324,7 @@ bool ServerConfig::isValidErrorPages(void)
 	return (true);
 }
 
-std::string ServerConfig::intToString(int number)
+std::string ServerConfig::intToString(long long number)
 {
     std::ostringstream oss;
     oss << number;
@@ -387,9 +387,16 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 		else if (input[i] == "index" && (i + 1) < input.size())
 		{
 			if (!newLocation.getIndexLocation().empty())
-				throw ErrorException("Index of location is duplicated");
+				throw ErrorException("Index of location is duplicated.");
 			checkSemiColon(input[++i]);
 			newLocation.setIndexLocation(input[i]);
+		}
+		else if (input[i] == "upload" && (i + 1) < input.size())
+		{
+			if (!newLocation.getUploadLocation().empty())
+				throw ErrorException("Upload of location is duplicated.");
+			checkSemiColon(input[++i]);
+			newLocation.setUploadLocation(input[i]);
 		}
 		else if (input[i] == "return" && (i + 1) < input.size())
 		{
@@ -473,7 +480,7 @@ void ServerConfig::setLocation(std::string path, std::vector<std::string> input)
 		}
 	}
 	std::vector<std::string> methodsDefault;
-	newLocation.setMethods(methodsDefault); // met les méthodes du CGI par défaut GET et la méthode GET par défaut pour les blocs location classique
+	newLocation.setMethods(methodsDefault); // met les méthodes du CGI par défaut GET, POST et la méthode GET par défaut pour les blocs location classique
 	this->_locations.push_back(newLocation);
 }
 
@@ -491,6 +498,21 @@ bool ServerConfig::checkDupLocations(void)
 		}
 	}
 	return (false);
+}
+
+// fonction qui permet de mettre par défaut les directives des blocks location à celles du block server
+// ex: si un block location n'a pas de root, body size ou index => on lui assigne ceux du block server
+void ServerConfig::updateLocations()
+{
+	for (size_t i = 0; i < this->_locations.size(); i++)
+	{
+		if (!this->_root.empty() && this->_locations[i].getRootLocation().empty()) // s'il n'y pas de root dans le block location on met le root du server
+			this->_locations[i].setRootLocation(this->_root);
+		if (this->_clientMaxBodySize != MAX_BODY_LENGTH && this->_locations[i].getMaxBodySizeLoc() == MAX_BODY_LENGTH)
+			this->_locations[i].setMaxBodySizeLoc(intToString(this->_clientMaxBodySize));
+		if (!this->_index.empty() && this->_locations[i].getIndexLocation().empty())
+			this->_locations[i].setIndexLocation(this->_index);
+	}
 }
 
 // Getters

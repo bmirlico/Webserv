@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/19 23:25:23 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/06/20 00:00:32 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/20 12:48:55 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@ Location::Location(void)
 	this->_rootLoc = "";
 	this->_autoIndexLoc = false;
 	this->_indexLoc = "";
+	this->_uploadLoc = "";
 	this->_alias = "";
 	this->_clientMaxBodySizeLoc = MAX_BODY_LENGTH;
 	this->_methods.reserve(3); // pourquoi faire ça ?
@@ -39,6 +40,7 @@ Location &Location::operator=(const Location &rhs)
 		this->_rootLoc = rhs._rootLoc;
 		this->_autoIndexLoc = rhs._autoIndexLoc;
 		this->_indexLoc = rhs._indexLoc;
+		this->_uploadLoc = rhs._uploadLoc;
 		this->_cgiInterpreter = rhs._cgiInterpreter;
 		this->_cgiExt = rhs._cgiExt;
 		this->_return = rhs._return;
@@ -131,6 +133,11 @@ void Location::setIndexLocation(std::string indexLoc)
 	this->_indexLoc = indexLoc;
 }
 
+void Location::setUploadLocation(std::string uploadLoc)
+{
+	this->_uploadLoc = uploadLoc;
+}
+
 void Location::setReturn(std::vector<std::string> input)
 {
 	if (input.size() != 2) // on peut avoir un return 301 par ex, mais je n'ai pas su le tester donc j'ai laissé tel que le sujet le demandait => une redirection vers un fichier pour moi
@@ -189,6 +196,11 @@ const std::string &Location::getRootLocation() const
 const std::string &Location::getIndexLocation() const
 {
 	return (this->_indexLoc);
+}
+
+const std::string &Location::getUploadLocation() const
+{
+	return (this->_uploadLoc);
 }
 
 std::vector<int> &Location::getMethods(void)

@@ -6,7 +6,7 @@
 /*   By: bmirlico <bmirlico@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/05/08 13:25:17 by bmirlico          #+#    #+#             */
-/*   Updated: 2024/06/20 00:44:26 by bmirlico         ###   ########.fr       */
+/*   Updated: 2024/06/20 12:56:11 by bmirlico         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,7 +56,9 @@ void ConfigParser::printServers(void)
 			std::cout << "name location: " << itl->getPath() << std::endl;
 			std::cout << "methods: " << itl->getPrintMethods() << std::endl;
 			std::cout << "index: " << itl->getIndexLocation() << std::endl;
+			std::cout << "autoindex: " << (itl->getAutoIndexLoc() ? "on": "off") << std::endl;
 			std::cout << "Max Body Size loc: " << itl->getMaxBodySizeLoc() << std::endl;
+			std::cout << "upload location: " << itl->getUploadLocation() << std::endl;
 			if (itl->getPath() != "/cgi-bin")
 			{
 				std::cout << "root: " << itl->getRootLocation() << std::endl;
@@ -334,13 +336,9 @@ void ConfigParser::createServer(std::string &config, ServerConfig &server)
 		throw ErrorException("Duplicate location block.");
 	// fonction qui met par défaut les directives du block location
 	// root, max body size, index
-	// if (newLocation.getPath() != "/cgi-bin" && newLocation.getRootLocation().empty()) // s'il n'y pas de root dans le block location on met le root du server
-	// 	newLocation.setRootLocation(this->_root); // on recheck plus tard si root du server existe, s'il n'existe pas => error
-	// if (newLocation.getIndexLocation().empty())
-	// 	newLocation.setIndexLocation(this->_index);
-	// if (!flagMaxSize)
-	// 	newLocation.setMaxBodySizeLoc(intToString(this->_clientMaxBodySize));
+	server.updateLocations();
 }
+
 
 // fonction qui vérifie si 2 blocks Server ont le même server name, host et port
 // fonction que je n'utilise pas finalement car nginx se lance quand même dans le cas où il y a 2 block servers similaires
